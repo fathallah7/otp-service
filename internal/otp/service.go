@@ -3,6 +3,7 @@ package otp
 import (
 	"context"
 	"errors"
+	"fmt"
 )
 
 var ErrNotImplemented = errors.New("OTP delivery not implemented")
@@ -18,11 +19,21 @@ func (s *Service) RequestOTP(ctx context.Context, input string) error {
 		return err
 	}
 
-	_, err := ResolveRecipient(input)
+	// 1. Resolve the recipient (e.g., email or phone number)
+	recipient, err := ResolveRecipient(input)
 	if err != nil {
 		return err
 	}
 
-	// TODO: Generate, store and deliver OTP
+	// 2. Generate the OTP
+	code, err := GenerateOTP()
+	if err != nil {
+		return fmt.Errorf("failed to generate OTP: %w", err)
+	}
+
+	// TODO: store and deliver OTP
+	_ = recipient
+	_ = code
+
 	return ErrNotImplemented
 }
