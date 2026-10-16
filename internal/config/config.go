@@ -5,6 +5,7 @@ import "os"
 type Config struct {
 	Port       string
 	Enviroment string
+	RedisAddr string
 }
 
 func Load() Config {
@@ -18,8 +19,14 @@ func Load() Config {
 		env = "development"
 	}
 
+	redisAddr := os.Getenv("REDIS_ADDR")
+	if redisAddr == "" {
+		redisAddr = "localhost:6379"
+	}
+
 	return Config{
 		Port:       port,
 		Enviroment: env,
+		RedisAddr:  redisAddr,
 	}
 }
