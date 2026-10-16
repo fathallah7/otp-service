@@ -1,11 +1,14 @@
 package main
 
 import (
+	"context"
 	"log"
 	"net/http"
 	"otp-service/internal/config"
 	"otp-service/internal/otp"
 	"otp-service/internal/server"
+	"otp-service/internal/storage"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -36,6 +39,20 @@ func main() {
 		Addr:    ":" + cfg.Port,
 		Handler: router,
 	}
+
+	// Connect to Redis
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+
+	redisClient, err := storage.NewRedis(ctx, cfg.RedisAddr)
+	cancel()
+
+	if err != nil {
+		log.Fatalf("Failed to connect to Redis: %v", err)
+	}
+
+	defer redisClient.Close()
+
+	log.Println("Connected to Redis successfully")
 
 	// Start the server
 	log.Printf("Starting server on port %s in %s mode", cfg.Port, cfg.Enviroment)
