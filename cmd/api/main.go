@@ -4,6 +4,7 @@ import (
 	"log"
 	"net/http"
 	"otp-service/internal/config"
+	"otp-service/internal/otp"
 	"otp-service/internal/server"
 
 	"github.com/gin-gonic/gin"
@@ -18,8 +19,14 @@ func main() {
 		gin.SetMode(gin.ReleaseMode)
 	}
 
+	// Create Service
+	otpService := otp.NewService()
+
+	// Create Handler and inject Service
+	otpHandler := otp.NewHandler(otpService)
+
 	// Create http router
-	router, err := server.NewRouter()
+	router, err := server.NewRouter(otpHandler)
 	if err != nil {
 		log.Fatalf("Failed to create router: %v", err)
 	}
