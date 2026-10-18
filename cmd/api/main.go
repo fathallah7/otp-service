@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/hex"
 	"log"
 	"net/http"
 	"otp-service/internal/config"
@@ -36,8 +37,19 @@ func main() {
 
 	log.Println("Connected to Redis successfully")
 
+	// Decode HMAC secret
+	secret, err := hex.DecodeString(cfg.OTPHMACKeyHex)
+
+	if err != nil {
+		log.Fatalf("Invalid OTP_HMAC_KEY format: %v", err)
+	}
+
+	if len(secret) != 32 {
+		log.Fatal("OTP_HMAC_KEY must contain exactly 32 bytes")
+	}
+
 	// Create Service
-	otpService := otp.NewService(redisClient)
+	otpService := otp.NewService(redisClient, secret)
 
 	// Create Handler and inject Service
 	otpHandler := otp.NewHandler(otpService)
