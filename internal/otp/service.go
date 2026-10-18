@@ -39,9 +39,16 @@ func (s *Service) RequestOTP(ctx context.Context, input string) error {
 		return fmt.Errorf("failed to generate OTP: %w", err)
 	}
 
-	// TODO: store and deliver OTP
-	_ = recipient
-	_ = code
+	// 3. Generate protected OTP digest
+	digest := hashOTP(s.hmacSecret, recipient.Value, code)
+
+	// 4. Generate Redis key
+	key := otpRedisKey(s.hmacSecret, recipient)
+
+	// 5. Store OTP digest in Redis
+	if err := s.saveOTP(ctx, key, digest); err != nil {
+		return fmt.Errorf("store OTP: %w", err)
+	}
 
 	return ErrNotImplemented
 }
