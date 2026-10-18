@@ -12,11 +12,13 @@ var ErrNotImplemented = errors.New("OTP delivery not implemented")
 
 type Service struct {
 	redisClient *redis.Client
+	hmacSecret  []byte
 }
 
-func NewService(redisClient *redis.Client) *Service {
+func NewService(redisClient *redis.Client, secret []byte) *Service {
 	return &Service{
 		redisClient: redisClient,
+		hmacSecret:  secret,
 	}
 }
 
