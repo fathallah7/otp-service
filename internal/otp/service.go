@@ -35,10 +35,6 @@ func (s *Service) RequestOTP(ctx context.Context, input string) error {
 		return err
 	}
 
-	if recipient.Channel != ChannelEmail {
-		return ErrNotImplemented
-	}
-
 	// 2. Generate the OTP
 	code, err := GenerateOTP()
 	if err != nil {
