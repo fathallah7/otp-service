@@ -5,11 +5,13 @@ import (
 	"encoding/hex"
 	"log"
 	"net/http"
+	"time"
+
 	"otp-service/internal/config"
+	"otp-service/internal/delivery"
 	"otp-service/internal/otp"
 	"otp-service/internal/server"
 	"otp-service/internal/storage"
-	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
@@ -54,8 +56,16 @@ func main() {
 		log.Fatal("OTP_HMAC_KEY must contain exactly 32 bytes")
 	}
 
+	emailSender := delivery.NewEmailSender(
+		cfg.SMTPHost,
+		cfg.SMTPPort,
+		cfg.SMTPUsername,
+		cfg.SMTPPassword,
+		cfg.SMTPFrom,
+	)
+
 	// Create Service
-	otpService := otp.NewService(redisClient, secret)
+	otpService := otp.NewService(redisClient, secret, emailSender)
 
 	// Create Handler and inject Service
 	otpHandler := otp.NewHandler(otpService)
