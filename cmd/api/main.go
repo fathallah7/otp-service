@@ -64,8 +64,21 @@ func main() {
 		cfg.SMTPFrom,
 	)
 
+	whatsappSender := delivery.NewWhatsAppSender(
+		cfg.WhatsAppAPIVersion,
+		cfg.WhatsAppPhoneNumberID,
+		cfg.WhatsAppAccessToken,
+		cfg.WhatsAppTemplateName,
+		cfg.WhatsAppTemplateLanguage,
+	)
+
+	sender := delivery.NewDispatcher(
+		emailSender,
+		whatsappSender,
+	)
+
 	// Create Service
-	otpService := otp.NewService(redisClient, secret, emailSender)
+	otpService := otp.NewService(redisClient, secret, sender)
 
 	// Create Handler and inject Service
 	otpHandler := otp.NewHandler(otpService)
