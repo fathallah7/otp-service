@@ -4,14 +4,20 @@ import (
 	"context"
 	"errors"
 	"fmt"
+
+	"github.com/redis/go-redis/v9"
 )
 
 var ErrNotImplemented = errors.New("OTP delivery not implemented")
 
-type Service struct{}
+type Service struct {
+	redisClient *redis.Client
+}
 
-func NewService() *Service {
-	return &Service{}
+func NewService(redisClient *redis.Client) *Service {
+	return &Service{
+		redisClient: redisClient,
+	}
 }
 
 func (s *Service) RequestOTP(ctx context.Context, input string) error {

@@ -37,7 +37,7 @@ func main() {
 	log.Println("Connected to Redis successfully")
 
 	// Create Service
-	otpService := otp.NewService()
+	otpService := otp.NewService(redisClient)
 
 	// Create Handler and inject Service
 	otpHandler := otp.NewHandler(otpService)
