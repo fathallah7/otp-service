@@ -7,6 +7,12 @@ type Config struct {
 	Enviroment    string
 	RedisAddr     string
 	OTPHMACKeyHex string
+
+	SMTPHost     string
+	SMTPPort     string
+	SMTPUsername string
+	SMTPPassword string
+	SMTPFrom     string
 }
 
 func Load() Config {
@@ -27,10 +33,22 @@ func Load() Config {
 
 	otpHMACKey := os.Getenv("OTP_HMAC_KEY")
 
+	smtpHost := os.Getenv("SMTP_HOST")
+	smtpPort := os.Getenv("SMTP_PORT")
+	smtpUsername := os.Getenv("SMTP_USERNAME")
+	smtpPassword := os.Getenv("SMTP_PASSWORD")
+	smtpFrom := os.Getenv("SMTP_FROM")
+
 	return Config{
-		Port:       port,
-		Enviroment: env,
-		RedisAddr:  redisAddr,
+		Port:          port,
+		Enviroment:    env,
+		RedisAddr:     redisAddr,
 		OTPHMACKeyHex: otpHMACKey,
+
+		SMTPHost:     smtpHost,
+		SMTPPort:     smtpPort,
+		SMTPUsername: smtpUsername,
+		SMTPPassword: smtpPassword,
+		SMTPFrom:     smtpFrom,
 	}
 }
