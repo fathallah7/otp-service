@@ -13,6 +13,12 @@ type Config struct {
 	SMTPUsername string
 	SMTPPassword string
 	SMTPFrom     string
+
+	WhatsAppAPIVersion       string
+	WhatsAppPhoneNumberID    string
+	WhatsAppAccessToken      string
+	WhatsAppTemplateName     string
+	WhatsAppTemplateLanguage string
 }
 
 func Load() Config {
@@ -39,6 +45,12 @@ func Load() Config {
 	smtpPassword := os.Getenv("SMTP_PASSWORD")
 	smtpFrom := os.Getenv("SMTP_FROM")
 
+	whatsAppAPIVersion := os.Getenv("WHATSAPP_API_VERSION")
+	whatsAppPhoneNumberID := os.Getenv("WHATSAPP_PHONE_NUMBER_ID")
+	whatsAppAccessToken := os.Getenv("WHATSAPP_ACCESS_TOKEN")
+	whatsAppTemplateName := os.Getenv("WHATSAPP_TEMPLATE_NAME")
+	watsAppTemplateLanguage := os.Getenv("WHATSAPP_TEMPLATE_LANGUAGE")
+
 	return Config{
 		Port:          port,
 		Enviroment:    env,
@@ -50,5 +62,11 @@ func Load() Config {
 		SMTPUsername: smtpUsername,
 		SMTPPassword: smtpPassword,
 		SMTPFrom:     smtpFrom,
+
+		WhatsAppAPIVersion:       whatsAppAPIVersion,
+		WhatsAppPhoneNumberID:    whatsAppPhoneNumberID,
+		WhatsAppAccessToken:      whatsAppAccessToken,
+		WhatsAppTemplateName:     whatsAppTemplateName,
+		WhatsAppTemplateLanguage: watsAppTemplateLanguage,
 	}
 }
