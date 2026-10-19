@@ -36,11 +36,6 @@ func (h *Handler) RequestOTP(c *gin.Context) {
 				"error": "Invalid email or phone number",
 			})
 
-		case errors.Is(err, ErrNotImplemented):
-			c.JSON(http.StatusNotImplemented, gin.H{
-				"error": "OTP delivery not implemented",
-			})
-
 		default:
 			c.JSON(http.StatusInternalServerError, gin.H{
 				"error": "Internal server error",

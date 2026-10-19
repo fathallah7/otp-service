@@ -8,8 +8,6 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-var ErrNotImplemented = errors.New("OTP delivery not implemented")
-
 type Service struct {
 	redisClient *redis.Client
 	hmacSecret  []byte
