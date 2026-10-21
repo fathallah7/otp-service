@@ -1,7 +1,7 @@
 package otp
 
 import (
-	"errors"
+	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -17,40 +17,24 @@ func NewHandler(service *Service) *Handler {
 	}
 }
 
-func (h *Handler) RequestOTP(c *gin.Context) {
+func (h *Handler) RequestOTP(c *gin.Context) error {
 	var req RequestOTPRequest
 
 	if err := c.ShouldBindBodyWithJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Invalid request body",
-		})
-		return
+		return fmt.Errorf("%w: %v", ErrInvalidRequest, err)
 	}
 
-	err := h.service.RequestOTP(c.Request.Context(), req.Recipient)
-
-	if err != nil {
-		switch {
-		case errors.Is(err, ErrInvalidRecipient):
-			c.JSON(http.StatusBadRequest, gin.H{
-				"error": "Invalid email or phone number",
-			})
-
-		case errors.Is(err, ErrNotImplemented):
-			c.JSON(http.StatusNotImplemented, gin.H{
-				"error": "OTP delivery not implemented",
-			})
-
-		default:
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"error": "Internal server error",
-			})
-		}
-		return
+	if err := h.service.RequestOTP(
+		c.Request.Context(),
+		req.Recipient,
+	); err != nil {
+		return err
 	}
 
 	c.JSON(http.StatusAccepted, gin.H{
 		"message": "OTP request accepted",
 	})
+
+	return nil
 
 }

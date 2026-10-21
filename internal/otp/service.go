@@ -2,23 +2,22 @@ package otp
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"github.com/redis/go-redis/v9"
 )
 
-var ErrNotImplemented = errors.New("OTP delivery not implemented")
-
 type Service struct {
 	redisClient *redis.Client
 	hmacSecret  []byte
+	sender      Sender
 }
 
-func NewService(redisClient *redis.Client, secret []byte) *Service {
+func NewService(redisClient *redis.Client, secret []byte, sender Sender) *Service {
 	return &Service{
 		redisClient: redisClient,
 		hmacSecret:  secret,
+		sender:      sender,
 	}
 }
 
@@ -50,5 +49,9 @@ func (s *Service) RequestOTP(ctx context.Context, input string) error {
 		return fmt.Errorf("store OTP: %w", err)
 	}
 
-	return ErrNotImplemented
+	if err := s.sender.SendOTP(ctx, recipient, code); err != nil {
+		return fmt.Errorf("%w: %w", ErrDeliveryFailed, err)
+	}
+
+	return nil
 }
