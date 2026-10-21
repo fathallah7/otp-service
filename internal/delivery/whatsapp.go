@@ -63,6 +63,14 @@ type WhatsAppParameter struct {
 	Text string `json:"text"`
 }
 
+type WhatsAppAPIError struct {
+	Error struct {
+		Message string `json:"message"`
+		Type    string `json:"type"`
+		Code    int    `json:"code"`
+	} `json:"error"`
+}
+
 func (s *WhatsAppSender) buildTestPayload(to, code string) ([]byte, error) {
 	payload := WhatsAppMessage{
 		MessagingProduct: "whatsapp",
@@ -146,9 +154,21 @@ func (s *WhatsAppSender) sendTestRequest(
 
 	// 4. Check response status
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		var apiErr WhatsAppAPIError
+
+		if err := json.NewDecoder(resp.Body).Decode(&apiErr); err != nil {
+			return fmt.Errorf(
+				"WhatsApp API returned HTTP %d: %w",
+				resp.StatusCode,
+				err,
+			)
+		}
+
 		return fmt.Errorf(
-			"WhatsApp API returned status: %s",
-			resp.Status,
+			"WhatsApp API returned HTTP %d (code %d): %s",
+			resp.StatusCode,
+			apiErr.Error.Code,
+			apiErr.Error.Message,
 		)
 	}
 
