@@ -2,11 +2,12 @@ package server
 
 import (
 	"net/http"
+	"otp-service/internal/otp"
 
 	"github.com/gin-gonic/gin"
 )
 
-func NewRouter() (*gin.Engine, error) {
+func NewRouter(otpHandler *otp.Handler) (*gin.Engine, error) {
 	router := gin.Default()
 
 	// Set trusted proxies to nil to disable proxy checking
@@ -20,6 +21,13 @@ func NewRouter() (*gin.Engine, error) {
 			"status": "ok",
 		})
 	})
+
+	// API routes
+	api := router.Group("/api/v1")
+
+	// OTP routes
+	otpRoutes := api.Group("/otp")
+	otpRoutes.POST("/request", HandleErrors(otpHandler.RequestOTP))
 
 	return router, nil
 }

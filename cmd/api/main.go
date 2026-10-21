@@ -1,15 +1,28 @@
 package main
 
 import (
+	"context"
+	"encoding/hex"
 	"log"
 	"net/http"
+	"time"
+
 	"otp-service/internal/config"
+	"otp-service/internal/delivery"
+	"otp-service/internal/otp"
 	"otp-service/internal/server"
+	"otp-service/internal/storage"
 
 	"github.com/gin-gonic/gin"
+	"github.com/joho/godotenv"
 )
 
 func main() {
+	// Load .env file
+	if err := godotenv.Load(); err != nil {
+		log.Println("No .env file found, using system environment variables")
+	}
+
 	// Load configuration
 	cfg := config.Load()
 
@@ -18,8 +31,60 @@ func main() {
 		gin.SetMode(gin.ReleaseMode)
 	}
 
+	// Connect to Redis
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+
+	redisClient, err := storage.NewRedis(ctx, cfg.RedisAddr)
+	cancel()
+
+	if err != nil {
+		log.Fatalf("Failed to connect to Redis: %v", err)
+	}
+
+	defer redisClient.Close()
+
+	log.Println("Connected to Redis successfully")
+
+	// Decode HMAC secret
+	secret, err := hex.DecodeString(cfg.OTPHMACKeyHex)
+
+	if err != nil {
+		log.Fatalf("Invalid OTP_HMAC_KEY format: %v", err)
+	}
+
+	if len(secret) != 32 {
+		log.Fatal("OTP_HMAC_KEY must contain exactly 32 bytes")
+	}
+
+	emailSender := delivery.NewEmailSender(
+		cfg.SMTPHost,
+		cfg.SMTPPort,
+		cfg.SMTPUsername,
+		cfg.SMTPPassword,
+		cfg.SMTPFrom,
+	)
+
+	whatsappSender := delivery.NewWhatsAppSender(
+		cfg.WhatsAppAPIVersion,
+		cfg.WhatsAppPhoneNumberID,
+		cfg.WhatsAppAccessToken,
+		cfg.WhatsAppTemplateName,
+		cfg.WhatsAppTemplateLanguage,
+	)
+
+	sender := delivery.NewDispatcher(
+		emailSender,
+		whatsappSender,
+	)
+
+	// Create Service
+	otpService := otp.NewService(redisClient, secret, sender)
+
+	// Create Handler and inject Service
+	otpHandler := otp.NewHandler(otpService)
+
 	// Create http router
-	router, err := server.NewRouter()
+	router, err := server.NewRouter(otpHandler)
 	if err != nil {
 		log.Fatalf("Failed to create router: %v", err)
 	}
