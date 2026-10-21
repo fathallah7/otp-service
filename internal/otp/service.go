@@ -50,7 +50,7 @@ func (s *Service) RequestOTP(ctx context.Context, input string) error {
 	}
 
 	if err := s.sender.SendOTP(ctx, recipient, code); err != nil {
-		return fmt.Errorf("deliver OTP: %w", err)
+		return fmt.Errorf("%w: %w", ErrDeliveryFailed, err)
 	}
 
 	return nil
