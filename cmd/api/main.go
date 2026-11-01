@@ -10,6 +10,7 @@ import (
 	"otp-service/internal/config"
 	"otp-service/internal/delivery"
 	"otp-service/internal/otp"
+	"otp-service/internal/queue"
 	"otp-service/internal/server"
 	"otp-service/internal/storage"
 
@@ -56,6 +57,9 @@ func main() {
 		log.Fatal("OTP_HMAC_KEY must contain exactly 32 bytes")
 	}
 
+	producer := queue.NewProducer(cfg.RedisAddr)
+	defer producer.Close()
+
 	emailSender := delivery.NewEmailSender(
 		cfg.SMTPHost,
 		cfg.SMTPPort,
@@ -78,7 +82,7 @@ func main() {
 	)
 
 	// Create Service
-	otpService := otp.NewService(redisClient, secret, sender)
+	otpService := otp.NewService(redisClient, secret, sender, producer)
 
 	// Create Handler and inject Service
 	otpHandler := otp.NewHandler(otpService)
