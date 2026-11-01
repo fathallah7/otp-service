@@ -1,57 +1,125 @@
+
 package otp
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"fmt"
+	"log"
 
 	"github.com/redis/go-redis/v9"
 )
+
+// Interface implemented by queue.Producer
+type OTPEnqueuer interface {
+	EnqueueOTP(ctx context.Context, requestID, recipient string) error
+}
 
 type Service struct {
 	redisClient *redis.Client
 	hmacSecret  []byte
 	sender      Sender
+	enqueuer    OTPEnqueuer
 }
 
-func NewService(redisClient *redis.Client, secret []byte, sender Sender) *Service {
+func NewService(
+	redisClient *redis.Client,
+	secret []byte,
+	sender Sender,
+	enqueuer OTPEnqueuer,
+) *Service {
 	return &Service{
 		redisClient: redisClient,
 		hmacSecret:  secret,
 		sender:      sender,
+		enqueuer:    enqueuer,
 	}
 }
 
+// Called by the HTTP API
 func (s *Service) RequestOTP(ctx context.Context, input string) error {
 	if err := ctx.Err(); err != nil {
 		return err
 	}
 
-	// 1. Resolve the recipient (e.g., email or phone number)
+	// 1. Validate and normalize recipient
 	recipient, err := ResolveRecipient(input)
 	if err != nil {
 		return err
 	}
 
-	// 2. Generate the OTP
-	code, err := GenerateOTP()
-	if err != nil {
-		return fmt.Errorf("failed to generate OTP: %w", err)
+	// 2. Generate a unique request ID
+	var id [16]byte
+
+	if _, err := rand.Read(id[:]); err != nil {
+		return fmt.Errorf("generate request ID: %w", err)
 	}
 
-	// 3. Generate protected OTP digest
+	requestID := hex.EncodeToString(id[:])
+
+	// 3. Enqueue the task
+	if s.enqueuer == nil {
+		return fmt.Errorf("OTP enqueuer is not configured")
+	}
+
+	if err := s.enqueuer.EnqueueOTP(
+		ctx,
+		requestID,
+		recipient.Value,
+	); err != nil {
+		return fmt.Errorf("enqueue OTP: %w", err)
+	}
+
+	return nil
+}
+
+// Called by the Asynq Worker
+func (s *Service) ProcessQueuedOTP(
+	ctx context.Context,
+	requestID, input string,
+) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+
+	if requestID == "" {
+		return fmt.Errorf("missing request ID: %w", ErrInvalidRequest)
+	}
+
+	// 1. Resolve recipient
+	recipient, err := ResolveRecipient(input)
+	if err != nil {
+		return err
+	}
+
+	// 2. Generate OTP
+	code, err := GenerateOTP()
+	if err != nil {
+		return fmt.Errorf("generate OTP: %w", err)
+	}
+
+	// 3. Hash OTP
 	digest := hashOTP(s.hmacSecret, recipient.Value, code)
 
 	// 4. Generate Redis key
 	key := otpRedisKey(s.hmacSecret, recipient)
 
-	// 5. Store OTP digest in Redis
+	// 5. Store OTP digest
 	if err := s.saveOTP(ctx, key, digest); err != nil {
 		return fmt.Errorf("store OTP: %w", err)
 	}
 
+	// 6. Deliver OTP
 	if err := s.sender.SendOTP(ctx, recipient, code); err != nil {
 		return fmt.Errorf("%w: %w", ErrDeliveryFailed, err)
 	}
+
+	log.Printf(
+		"OTP delivered: request=%s channel=%s",
+		requestID,
+		recipient.Channel,
+	)
 
 	return nil
 }
