@@ -36,5 +36,35 @@ func (h *Handler) RequestOTP(c *gin.Context) error {
 	})
 
 	return nil
+}
 
+func (h *Handler) VerifyOTP(c *gin.Context) error {
+	var req VerifyOTPRequest
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		return fmt.Errorf("%w: %v", ErrInvalidRequest, err)
+	}
+
+	valid, err := h.service.VerifyOTP(
+		c.Request.Context(),
+		req.Recipient,
+		req.Code,
+	)
+
+	if err != nil {
+		return err
+	}
+
+	if !valid {
+		c.JSON(http.StatusUnprocessableEntity, gin.H{
+			"error": "invalid or expired OTP",
+		})
+		return nil
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "OTP verified successfully",
+	})
+
+	return nil
 }
