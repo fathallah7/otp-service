@@ -1,4 +1,3 @@
-
 package otp
 
 import (
@@ -122,4 +121,44 @@ func (s *Service) ProcessQueuedOTP(
 	)
 
 	return nil
+}
+
+func (s *Service) VerifyOTP(
+	ctx context.Context,
+	input, code string,
+) (bool, error) {
+	if err := ctx.Err(); err != nil {
+		return false, err
+	}
+
+	// 1. Validate recipient
+	recipient, err := ResolveRecipient(input)
+	if err != nil {
+		return false, err
+	}
+
+	// 2. Validate OTP format
+	if len(code) != 6 {
+		return false, ErrInvalidRequest
+	}
+
+	for _, digit := range code {
+		if digit < '0' || digit > '9' {
+			return false, ErrInvalidRequest
+		}
+	}
+
+	// 3. Generate Redis key
+	key := otpRedisKey(s.hmacSecret, recipient)
+
+	// 4. Hash submitted OTP
+	digest := hashOTP(s.hmacSecret, recipient.Value, code)
+
+	// 5. Verify and consume OTP
+	valid, err := s.consumeOTP(ctx, key, digest)
+	if err != nil {
+		return false, fmt.Errorf("verify OTP: %w", err)
+	}
+
+	return valid, nil
 }

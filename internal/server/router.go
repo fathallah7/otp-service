@@ -28,6 +28,7 @@ func NewRouter(otpHandler *otp.Handler) (*gin.Engine, error) {
 	// OTP routes
 	otpRoutes := api.Group("/otp")
 	otpRoutes.POST("/request", HandleErrors(otpHandler.RequestOTP))
+	otpRoutes.POST("/verify", HandleErrors(otpHandler.VerifyOTP))
 
 	return router, nil
 }
