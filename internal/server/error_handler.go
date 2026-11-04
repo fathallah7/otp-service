@@ -41,6 +41,11 @@ func respondError(c *gin.Context, err error) {
 		status = http.StatusBadGateway
 		code = "delivery_failed"
 		message = "Unable to send verification code"
+
+	case errors.Is(err, otp.ErrResendCooldown):
+		status = http.StatusTooManyRequests
+		code = "resend_cooldown"
+		message = "Please wait before requesting another OTP"
 	}
 
 	c.JSON(status, gin.H{
