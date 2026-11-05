@@ -6,7 +6,6 @@ import (
 	"encoding/hex"
 	"fmt"
 	"log"
-	"time"
 
 	"github.com/redis/go-redis/v9"
 )
@@ -58,28 +57,29 @@ func (s *Service) RequestOTP(ctx context.Context, input string) error {
 
 	requestID := hex.EncodeToString(id[:])
 
-	// Create a cooldown key for this recipient
-	cooldownKey := otpRedisKey(s.hmacSecret, recipient) + ":cooldown"
-
-	// Allow only one OTP request every 60 seconds
-	allowed, err := s.redisClient.SetNX(
-		ctx,
-		cooldownKey,
-		requestID,
-		60*time.Second,
-	).Result()
-
-	if err != nil {
-		return fmt.Errorf("OTP cooldown: %w", err)
-	}
-
-	if !allowed {
-		return ErrResendCooldown
-	}
-
 	// 3. Enqueue the task
 	if s.enqueuer == nil {
 		return fmt.Errorf("OTP enqueuer is not configured")
+	}
+
+	result, err := s.checkOTPRequestLimits(
+		ctx,
+		recipient,
+		requestID,
+	)
+
+	if err != nil {
+		return fmt.Errorf("OTP request rate limit: %w", err)
+	}
+
+	switch result {
+	case 1:
+		return ErrResendCooldown
+	case 2:
+		return ErrRequestRateLimit
+	case 0:
+	default:
+		return fmt.Errorf("unexpected rate limit result: %d", result)
 	}
 
 	if err := s.enqueuer.EnqueueOTP(
