@@ -9,32 +9,64 @@ import (
 
 const otpTTL = 5 * time.Minute
 
+// Save OTP and reset failed attempts atomically.
+var saveOTPScript = redis.NewScript(`
+	redis.call("SET", KEYS[1], ARGV[1], "PX", ARGV[2])
+	redis.call("DEL", KEYS[2])
+	return 1
+`)
+
 func (s *Service) saveOTP(
 	ctx context.Context,
-	key string,
-	digest string,
+	key, digest string,
 ) error {
-	return s.redisClient.Set(
+	return saveOTPScript.Run(
 		ctx,
-		key,
+		s.redisClient,
+		[]string{key, key + ":attempts"},
 		digest,
-		otpTTL,
+		otpTTL.Milliseconds(),
 	).Err()
 }
 
 var verifyOTPScript = redis.NewScript(`
     local stored = redis.call("GET", KEYS[1])
 
-    if not stored then
-        return 0
-    end
+	-- OTP doesn't exist or has expired
+	if not stored then
+		return 0
+	end
 
-    if stored ~= ARGV[1] then
-        return 0
-    end
+	local attempts = tonumber(
+		redis.call("GET", KEYS[2]) or "0"
+	)
 
-    redis.call("DEL", KEYS[1])
-    return 1
+	-- Maximum attempts already reached
+	if attempts >= 5 then
+		return 0
+	end
+
+	-- Correct OTP: delete digest and attempt counter
+	if stored == ARGV[1] then
+		redis.call("DEL", KEYS[1], KEYS[2])
+		return 1
+	end
+
+	-- Incorrect OTP: increment failed attempts
+	attempts = redis.call("INCR", KEYS[2])
+
+	-- Make counter expire with the OTP
+	local ttl = redis.call("PTTL", KEYS[1])
+	if ttl > 0 then
+		redis.call("PEXPIRE", KEYS[2], ttl)
+	end
+
+	-- Invalidate OTP after 5 wrong attempts
+	if attempts >= 5 then
+		redis.call("DEL", KEYS[1])
+	end
+
+	return 0
 `)
 
 func (s *Service) consumeOTP(
@@ -45,7 +77,10 @@ func (s *Service) consumeOTP(
 	result, err := verifyOTPScript.Run(
 		ctx,
 		s.redisClient,
-		[]string{key},
+		[]string{
+			key,
+			key + ":attempts",
+		},
 		digest,
 	).Int()
 
