@@ -46,6 +46,11 @@ func respondError(c *gin.Context, err error) {
 		status = http.StatusTooManyRequests
 		code = "resend_cooldown"
 		message = "Please wait before requesting another OTP"
+
+	case errors.Is(err, otp.ErrRequestRateLimit):
+		status = http.StatusTooManyRequests
+		code = "request_rate_limit"
+		message = "too many OTP requests, please try again later"
 	}
 
 	c.JSON(status, gin.H{
