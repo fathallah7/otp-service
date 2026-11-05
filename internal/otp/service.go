@@ -62,6 +62,26 @@ func (s *Service) RequestOTP(ctx context.Context, input string) error {
 		return fmt.Errorf("OTP enqueuer is not configured")
 	}
 
+	result, err := s.checkOTPRequestLimits(
+		ctx,
+		recipient,
+		requestID,
+	)
+
+	if err != nil {
+		return fmt.Errorf("OTP request rate limit: %w", err)
+	}
+
+	switch result {
+	case 1:
+		return ErrResendCooldown
+	case 2:
+		return ErrRequestRateLimit
+	case 0:
+	default:
+		return fmt.Errorf("unexpected rate limit result: %d", result)
+	}
+
 	if err := s.enqueuer.EnqueueOTP(
 		ctx,
 		requestID,
