@@ -52,10 +52,13 @@ The queue is named `otp` and handles tasks of type `otp:deliver`. Each task cont
 ```text
 otp-service/
 ├── cmd/
-│   ├── api/main.go          # HTTP API startup and dependency wiring
-│   └── worker/main.go       # Delivery worker startup
+│   ├── api/main.go          # HTTP API entry point
+│   └── worker/main.go       # Delivery worker entry point
 ├── internal/
-│   ├── bootstrap/           # Shared API/worker dependency initialization
+│   ├── bootstrap/           # Dependency initialization and process wiring
+│   │   ├── common.go        # Shared API/worker dependencies
+│   │   ├── api.go           # HTTP API wiring
+│   │   └── worker.go        # Delivery worker wiring
 │   ├── config/              # Environment configuration
 │   ├── delivery/            # Dispatcher, SMTP sender, WhatsApp sender
 │   ├── otp/                 # DTOs, handlers, service, validation, HMAC, Redis scripts
