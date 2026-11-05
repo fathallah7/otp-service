@@ -55,6 +55,7 @@ otp-service/
 │   ├── api/main.go          # HTTP API startup and dependency wiring
 │   └── worker/main.go       # Delivery worker startup
 ├── internal/
+│   ├── bootstrap/           # Shared API/worker dependency initialization
 │   ├── config/              # Environment configuration
 │   ├── delivery/            # Dispatcher, SMTP sender, WhatsApp sender
 │   ├── otp/                 # DTOs, handlers, service, validation, HMAC, Redis scripts
